@@ -269,6 +269,19 @@ fn annexb_keeps_frame_units_when_editing() {
 }
 
 #[test]
+fn container_without_av1_is_unsupported_input() {
+  let scratch = Scratch::new("no-video");
+  let audio = scratch.path("audio.mp4");
+  if !ffmpeg(&["-f", "lavfi", "-i", "sine", "-t", "1", "-c:a", "aac", audio.to_str().unwrap()]) {
+    eprintln!("skipped: ffmpeg is needed");
+    return;
+  }
+  let error = Input::open(&audio, "ffmpeg", None).err().unwrap();
+  assert_eq!(error.kind(), rabbit_av1::ErrorKind::UnsupportedInput, "{error}");
+  assert!(error.to_string().ends_with("the input is not an AV1 stream"), "{error}");
+}
+
+#[test]
 fn metadata_type_is_reported() {
   assert_eq!(tagged(0).metadata_type(), METADATA_TYPE_ITUT_T35);
 }

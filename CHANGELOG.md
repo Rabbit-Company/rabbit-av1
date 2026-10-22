@@ -2,6 +2,13 @@
 
 Error codes stay compatible within a major version. Messages meant for people may change in any release. Before 1.0, a minor version may change the API.
 
+## 0.1.1 - 2026-10-22
+
+### Fixes
+
+- `Input::open` on a container without an AV1 track fails with `unsupported_input` and "the input is not an AV1 stream" again, as regrain did before the code moved here. 0.1.0 reported `ffmpeg_failed` with only ffmpeg's exit status. ffmpeg's own message is still printed on standard error.
+- `Error` no longer returns the I/O error as its `source`. Its message already includes it, so printers that walk the source chain, such as anyhow's `{:#}`, showed it twice. `Error::io_kind` gives the kind of the I/O failure instead.
+
 ## 0.1.0 - 2026-10-22
 
 First release: the AV1 parsing of regrain 0.2.3, as a library of its own.

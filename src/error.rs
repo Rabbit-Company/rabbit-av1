@@ -46,11 +46,16 @@ impl ErrorKind {
 }
 
 /// The error type of every fallible function in this crate.
+///
+/// The message is complete on its own: for I/O failures it already includes what the
+/// operating system reported, so [`source`](std::error::Error::source) is always `None` and
+/// printers that walk the source chain do not repeat it. [`io_kind`](Error::io_kind) gives the
+/// kind of the I/O failure.
 #[derive(Debug)]
 pub struct Error {
   kind: ErrorKind,
   message: String,
-  source: Option<std::io::Error>,
+  io_kind: Option<std::io::ErrorKind>,
 }
 
 /// A `Result` with [`Error`] as its error type.
@@ -62,7 +67,7 @@ impl Error {
     Error {
       kind,
       message: message.to_string(),
-      source: None,
+      io_kind: None,
     }
   }
 
@@ -74,13 +79,18 @@ impl Error {
     Error {
       kind: ErrorKind::Io,
       message: format!("{message}: {source}"),
-      source: Some(source),
+      io_kind: Some(source.kind()),
     }
   }
 
   /// The kind of failure.
   pub fn kind(&self) -> ErrorKind {
     self.kind
+  }
+
+  /// The kind of I/O failure, for errors of kind [`ErrorKind::Io`].
+  pub fn io_kind(&self) -> Option<std::io::ErrorKind> {
+    self.io_kind
   }
 
   /// The stable code of the kind, the same as `self.kind().code()`.
@@ -101,18 +111,14 @@ impl Display for Error {
   }
 }
 
-impl std::error::Error for Error {
-  fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-    self.source.as_ref().map(|error| error as _)
-  }
-}
+impl std::error::Error for Error {}
 
 impl From<std::io::Error> for Error {
   fn from(error: std::io::Error) -> Self {
     Error {
       kind: ErrorKind::Io,
       message: error.to_string(),
-      source: Some(error),
+      io_kind: Some(error.kind()),
     }
   }
 }
@@ -140,10 +146,11 @@ mod tests {
   }
 
   #[test]
-  fn io_errors_keep_their_source() {
+  fn io_errors_name_their_cause_once() {
     let error = Error::io("failed to read", std::io::Error::other("disk gone"));
     assert_eq!(error.code(), "io_error");
+    assert_eq!(error.io_kind(), Some(std::io::ErrorKind::Other));
     assert_eq!(error.to_string(), "failed to read: disk gone");
-    assert!(std::error::Error::source(&error).is_some());
+    assert!(std::error::Error::source(&error).is_none());
   }
 }

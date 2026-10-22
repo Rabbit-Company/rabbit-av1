@@ -67,18 +67,11 @@ impl Input {
         child: Some(child),
       }),
       Err(error) => {
-        // The pipe is closed by now, so ffmpeg stops.
-        let error = match child.wait() {
-          Ok(status) if !status.success() => ffmpeg_failed(status, "reading the input"),
-          _ => error,
-        };
-        let kind = if error.kind() == ErrorKind::FfmpegFailed {
-          ErrorKind::FfmpegFailed
-        } else {
-          ErrorKind::UnsupportedInput
-        };
+        // The pipe is closed by now, so ffmpeg stops. When it failed, its own message is
+        // already on standard error and says more than its exit status.
+        let _ = child.wait();
         Err(Error::new(
-          kind,
+          ErrorKind::UnsupportedInput,
           format!("ffmpeg could not extract AV1 video from {}: {error}", path.display()),
         ))
       }
