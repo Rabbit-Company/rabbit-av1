@@ -1,0 +1,15 @@
+[package]
+name = "rabbit-av1"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+license = "MIT"
+description = "Read and rewrite AV1 bitstreams without decoding: OBUs, sequence and frame headers, film grain, HDR metadata, IVF and Annex B"
+readme = "README.md"
+repository = "https://github.com/Rabbit-Company/rabbit-av1"
+documentation = "https://docs.rs/rabbit-av1"
+keywords = ["av1", "video", "obu", "hdr", "film-grain"]
+categories = ["multimedia::video", "parser-implementations", "encoding"]
+exclude = ["/.github", "/scripts"]
+
+[dependencies]
