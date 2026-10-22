@@ -2,11 +2,9 @@
 
 Error codes stay compatible within a major version. Messages meant for people may change in any release. Before 1.0, a minor version may change the API.
 
-## Unreleased
+## 0.1.0 - 2026-10-22
 
-## 0.1.0
-
-The AV1 parsing of regrain 0.2.3, as a library of its own.
+First release: the AV1 parsing of regrain 0.2.3, as a library of its own.
 
 ### Features
 
