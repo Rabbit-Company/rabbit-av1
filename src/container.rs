@@ -367,19 +367,53 @@ impl Written {
 ///
 /// Returns whether decoding succeeded and the decoder's messages without the bracketed prefixes ffmpeg puts in front.
 pub fn decode_messages(path: &Path, ffmpeg: &str) -> Result<(bool, Vec<String>)> {
-  let output = Command::new(ffmpeg)
-    .args(["-v", "error", "-nostdin", "-c:v", "libdav1d", "-i"])
+  decode_messages_with_progress(path, ffmpeg, |_| {})
+}
+
+/// Like [`decode_messages`], and calls `progress` with the number of frames decoded so far, about twice a second
+/// as ffmpeg reports it.
+pub fn decode_messages_with_progress(path: &Path, ffmpeg: &str, mut progress: impl FnMut(u64)) -> Result<(bool, Vec<String>)> {
+  let mut child = Command::new(ffmpeg)
+    .args([
+      "-v",
+      "error",
+      "-nostdin",
+      "-nostats",
+      "-progress",
+      "pipe:1",
+      "-c:v",
+      "libdav1d",
+      "-i",
+    ])
     .arg(path)
     .args(["-map", "0:V:0", "-f", "null", "-"])
     .stdin(Stdio::null())
-    .output()
+    .stdout(Stdio::piped())
+    .stderr(Stdio::piped())
+    .spawn()
     .map_err(|error| {
       Error::new(
         ErrorKind::FfmpegMissing,
         format!("failed to run {ffmpeg} to decode the output: {error}"),
       )
     })?;
-  let messages = String::from_utf8_lossy(&output.stderr);
+  // Read on a thread of its own, so a decoder with many messages cannot stall on a full pipe.
+  let mut stderr = child.stderr.take().expect("stderr is piped");
+  let messages = std::thread::spawn(move || {
+    let mut text = Vec::new();
+    let _ = std::io::Read::read_to_end(&mut stderr, &mut text);
+    String::from_utf8_lossy(&text).into_owned()
+  });
+  let stdout = child.stdout.take().expect("stdout is piped");
+  for line in BufReader::new(stdout).lines().map_while(std::result::Result::ok) {
+    if let Some(frames) = line.strip_prefix("frame=").and_then(|value| value.trim().parse().ok()) {
+      progress(frames);
+    }
+  }
+  let status = child
+    .wait()
+    .map_err(|error| Error::new(ErrorKind::FfmpegFailed, format!("{ffmpeg} did not finish: {error}")))?;
+  let messages = messages.join().unwrap_or_default();
   if messages.contains("libdav1d") && (messages.contains("Unknown decoder") || messages.contains("Decoder not found")) {
     return Err(Error::new(ErrorKind::DecoderMissing, format!("{ffmpeg} has no libdav1d decoder")));
   }
@@ -397,7 +431,7 @@ pub fn decode_messages(path: &Path, ffmpeg: &str) -> Result<(bool, Vec<String>)>
       rest.to_string()
     })
     .collect();
-  Ok((output.status.success(), lines))
+  Ok((status.success(), lines))
 }
 
 #[cfg(test)]

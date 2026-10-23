@@ -191,8 +191,12 @@ fn inserted_metadata_survives_every_output_and_keeps_the_pictures() {
     assert_eq!(found.len(), 30, "{extension}");
     assert!(found.iter().enumerate().all(|(i, payload)| payload[6] == i as u8), "{extension}");
     assert_eq!(picture(&target), reference, "{extension}");
-    let (decoded, messages) = rabbit_av1::container::decode_messages(&target, "ffmpeg").unwrap();
+    let mut decoded_frames = 0;
+    let (decoded, messages) =
+      rabbit_av1::container::decode_messages_with_progress(&target, "ffmpeg", |frames| decoded_frames = frames).unwrap();
     assert!(decoded && messages.is_empty(), "{extension}: {messages:?}");
+    // ffmpeg reports the last count when it ends.
+    assert_eq!(decoded_frames, 30, "{extension}");
   }
 }
 

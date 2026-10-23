@@ -102,7 +102,7 @@ The framing of a raw stream is detected from its first bytes. A `.obu` output ke
 
 ffmpeg copies the video track without decoding it. When the output is a container and the input was one too, its audio, subtitles, attachments, chapters and metadata are copied as well. `Output::mux_args` adds more ffmpeg arguments to that step. `Output` writes under a temporary name, and `Written::commit` moves the file into place, so a failed run leaves no half written file behind.
 
-`container::decode_messages` decodes a file with ffmpeg's libdav1d decoder and returns what the decoder complained about, to check an output before committing it.
+`container::decode_messages` decodes a file with ffmpeg's libdav1d decoder and returns what the decoder complained about, to check an output before committing it. `container::decode_messages_with_progress` does the same and reports how many frames were decoded so far.
 
 ## Errors
 

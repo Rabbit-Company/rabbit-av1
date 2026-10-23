@@ -2,6 +2,12 @@
 
 Error codes stay compatible within a major version. Messages meant for people may change in any release. Before 1.0, a minor version may change the API.
 
+## 0.1.2 - 2026-10-23
+
+### Features
+
+- `container::decode_messages_with_progress` decodes like `decode_messages` and reports the number of frames decoded so far, about twice a second, from ffmpeg's `-progress` output. `decode_messages` reads ffmpeg's messages on a thread of its own now.
+
 ## 0.1.1 - 2026-10-22
 
 ### Fixes
