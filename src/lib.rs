@@ -10,6 +10,8 @@
 //!   ITU-T T.35 metadata, the carrier of HDR10+ and Dolby Vision.
 //! - [`Packet`] inserts and removes OBUs in a temporal unit, and [`RefSlots`] follows values
 //!   through the reference slots for frames that `show_existing_frame` shows again.
+//! - [`Timeline`] turns packet time stamps into frame times the way an encoder counts them,
+//!   undoing the rounding of containers such as Matroska for constant frame rate video.
 //! - [`VideoReader`] reads IVF, low overhead (`.obu`) and Annex B streams without any other
 //!   program. [`Input`] and [`Output`] also read and write Matroska, WebM and MP4 by running
 //!   `ffmpeg`, which copies the video track without decoding it.
@@ -57,6 +59,7 @@ pub mod packet;
 pub mod parser;
 pub mod sequence;
 pub mod slots;
+pub mod timeline;
 
 pub use container::{Input, Output, Written};
 pub use error::{Error, ErrorKind, Result};
@@ -69,6 +72,7 @@ pub use packet::Packet;
 pub use parser::{CodedFrame, CodedGrain, Obu, ObuKind, StreamParser};
 pub use sequence::{ChromaFormat, SequenceHeader};
 pub use slots::RefSlots;
+pub use timeline::Timeline;
 
 #[cfg(doctest)]
 #[doc = include_str!("../README.md")]

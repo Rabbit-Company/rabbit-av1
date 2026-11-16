@@ -2,6 +2,12 @@
 
 Error codes stay compatible within a major version. Messages meant for people may change in any release. Before 1.0, a minor version may change the API.
 
+## 0.1.3 - 2026-11-16
+
+### Features
+
+- `Timeline` turns packet time stamps into frame times the way libaom counts them when it looks up a film grain table: from the first frame and rounded down. When every frame sits within one time base unit of the slots of a constant frame rate, it gives the exact time of the slot, so Matroska's millisecond time stamps of a 24000/1001 video give the same times as the IVF the encoder wrote. `VideoReader::timestamp` still rounds up and counts from zero.
+
 ## 0.1.2 - 2026-10-23
 
 ### Features

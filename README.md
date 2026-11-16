@@ -16,6 +16,7 @@ It is the shared base of [regrain](https://github.com/Rabbit-Company/regrain), w
 | `Packet`          | Inserts and removes OBUs in a temporal unit, keeping Annex B frame units intact                                   |
 | `RefSlots`        | Follows values through the reference slots, for frames that `show_existing_frame` shows again                     |
 | `VideoReader`     | Reads IVF, low overhead (`.obu`) and Annex B streams                                                              |
+| `Timeline`        | Turns packet timestamps into frame times as an encoder counts them, undoing Matroska's millisecond rounding       |
 | `Input`, `Output` | Open and write video files, using `ffmpeg` for Matroska, WebM and MP4                                             |
 
 The crate depends on nothing but the standard library.
@@ -101,6 +102,25 @@ Static HDR10 metadata is only needed with each sequence header, while HDR10+ goe
 The framing of a raw stream is detected from its first bytes. A `.obu` output keeps the framing of the input.
 
 ffmpeg copies the video track without decoding it. When the output is a container and the input was one too, its audio, subtitles, attachments, chapters and metadata are copied as well. `Output::mux_args` adds more ffmpeg arguments to that step. `Output` writes under a temporary name, and `Written::commit` moves the file into place, so a failed run leaves no half written file behind.
+
+## Frame times
+
+AV1 frame headers carry no timestamps, so a frame's time comes from its packet. Containers can round it: Matroska keeps milliseconds, so at 24000/1001 the frame at 150.40025 s is stored as 150.400 s. `Timeline` gives frames the times libaom gives them when it looks up a film grain table, counted from the first frame and rounded down. When every frame sits within one timestamp unit of the frames of a constant frame rate, it uses the exact time of the frame, so a video gets the same times in Matroska as in IVF. Variable frame rate video keeps its timestamps.
+
+```rust
+use rabbit_av1::Timeline;
+
+// Matroska timestamps in milliseconds of a minute of 24000/1001 video.
+let pts: Vec<u64> = (0..1440).map(|n| (n * 1_001_000 + 12_000) / 24_000).collect();
+let timeline = Timeline::new(&pts, 1000, 1, None);
+assert_eq!(timeline.frame_rate(), Some((24000, 1001)));
+// Frame 1 is stored at 42 ms and starts at 417083 in units of 1/10000000 s.
+assert_eq!(timeline.time(pts[1], 10_000_000), 417_083);
+```
+
+`VideoReader::timestamp` converts a single timestamp without any of this, rounding up and counting from zero.
+
+## Checking an output
 
 `container::decode_messages` decodes a file with ffmpeg's libdav1d decoder and returns what the decoder complained about, to check an output before committing it. `container::decode_messages_with_progress` does the same and reports how many frames were decoded so far.
 
