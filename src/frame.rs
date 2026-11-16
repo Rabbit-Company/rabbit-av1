@@ -263,9 +263,9 @@ impl FrameState {
           h.ref_frame_idx = self.frame_refs(seq, h.order_hint, last, gold);
         }
       }
-      for i in 0..REFS_PER_FRAME {
+      for slot in &mut h.ref_frame_idx {
         if !short_signaling {
-          h.ref_frame_idx[i] = r.bits(3)? as usize;
+          *slot = r.bits(3)? as usize;
         }
         if seq.frame_id_numbers_present {
           r.skip(seq.delta_frame_id_length as usize)?;
