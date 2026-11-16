@@ -24,9 +24,10 @@ const COMMON_FRAME_RATES: [(u64, u64); 16] = [
 /// first frame and rounded down.
 ///
 /// Containers can round time stamps. Matroska keeps milliseconds, so at 24000/1001 the frame at
-/// 150.40025 s is stored as 150.400 s. When every frame sits within one time base unit of a frame
-/// slot of a constant frame rate, the timeline uses the exact time of that slot, which undoes the
-/// rounding. Otherwise it uses the time stamps as they are.
+/// 150.40025 s is stored as 150.400 s, and keeps that error when remuxed to MP4. When every frame
+/// sits within a millisecond, or one time base unit when that is longer, of a frame slot of a
+/// constant frame rate, the timeline uses the exact time of that slot, which undoes the rounding.
+/// Otherwise it uses the time stamps as they are.
 ///
 /// ```
 /// use rabbit_av1::Timeline;
@@ -117,12 +118,17 @@ fn constant_rate(sorted: &[u64], rate: u64, scale: u64, hint: Option<(u32, u32)>
     .reduce(|best, candidate| if lower(candidate, best) { candidate } else { best })
 }
 
-// Whether every frame is within one time base unit of a slot of its own. Positions are in units of
-// 1 / (rate * num) seconds.
+// Whether every frame is within a millisecond, or one time base unit when that is longer, of a slot
+// of its own. Times that went through Matroska keep its rounding in a finer time base, such as MP4's.
+// Positions are in units of 1 / (rate * num) seconds.
 fn fits(sorted: &[u64], rate: u64, scale: u64, (num, den): (u64, u64)) -> bool {
   let unit = (scale * num) as u128;
+  let millisecond = ((rate * num) as u128).div_ceil(1000);
   let frame = (den * rate) as u128;
-  let tolerance = if 2 * unit < frame { unit } else { 0 };
+  let tolerance = [unit.max(millisecond), unit]
+    .into_iter()
+    .find(|&tolerance| 2 * tolerance < frame)
+    .unwrap_or(0);
   let mut last = None;
   for &pts in sorted {
     let position = (pts - sorted[0]) as u128 * unit;
@@ -162,6 +168,15 @@ mod tests {
     assert_eq!(timeline.time(pts[3606], TICKS), 1_504_002_500);
     assert_eq!(timeline.time(pts[3607], TICKS), 1_504_419_583);
     assert_eq!(timeline.rounding(TICKS), 0);
+  }
+
+  #[test]
+  fn matroska_rounding_in_a_finer_time_base_is_undone() {
+    // Matroska milliseconds remuxed to MP4's 1/16000: 0, 672, 1328 and so on.
+    let pts: Vec<u64> = milliseconds(480, 24000, 1001, 0).iter().map(|ms| ms * 16).collect();
+    let timeline = Timeline::new(&pts, 16000, 1, None);
+    assert_eq!(timeline.frame_rate(), Some((24000, 1001)));
+    assert_eq!(timeline.time(pts[7], TICKS), 2_919_583);
   }
 
   #[test]

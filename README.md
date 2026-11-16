@@ -105,7 +105,7 @@ ffmpeg copies the video track without decoding it. When the output is a containe
 
 ## Frame times
 
-AV1 frame headers carry no timestamps, so a frame's time comes from its packet. Containers can round it: Matroska keeps milliseconds, so at 24000/1001 the frame at 150.40025 s is stored as 150.400 s. `Timeline` gives frames the times libaom gives them when it looks up a film grain table, counted from the first frame and rounded down. When every frame sits within one timestamp unit of the frames of a constant frame rate, it uses the exact time of the frame, so a video gets the same times in Matroska as in IVF. Variable frame rate video keeps its timestamps.
+AV1 frame headers carry no timestamps, so a frame's time comes from its packet. Containers can round it: Matroska keeps milliseconds, so at 24000/1001 the frame at 150.40025 s is stored as 150.400 s. `Timeline` gives frames the times libaom gives them when it looks up a film grain table, counted from the first frame and rounded down. When every frame sits within a millisecond, or one timestamp unit when that is longer, of the frames of a constant frame rate, it uses the exact time of the frame, so a video gets the same times in Matroska, or in an MP4 remuxed from Matroska, as in IVF. Variable frame rate video keeps its timestamps.
 
 ```rust
 use rabbit_av1::Timeline;

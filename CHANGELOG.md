@@ -2,6 +2,12 @@
 
 Error codes stay compatible within a major version. Messages meant for people may change in any release. Before 1.0, a minor version may change the API.
 
+## 0.1.4 - 2026-11-16
+
+### Fixes
+
+- `Timeline` found no constant frame rate in an MP4 remuxed from Matroska. Such a file keeps Matroska's millisecond rounding in MP4's finer time base, such as 0, 672 and 1328 at 1/16000 for a 24000/1001 video, so its frames were up to half a millisecond from their slots and `Timeline` allowed only one time base unit. It allows a millisecond now, or one time base unit when that is longer, as long as that stays below half a frame.
+
 ## 0.1.3 - 2026-11-16
 
 ### Features
